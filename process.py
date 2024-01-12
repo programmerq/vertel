@@ -2,6 +2,7 @@
 import re
 import sqlite3
 import csv
+import itertools
 from tqdm import tqdm
 from collections import defaultdict
 from natsort import natsorted
@@ -24,17 +25,25 @@ def process_log_or_trace(log_trace, db_path):
     version_counts = defaultdict(int)
     version_details = defaultdict(set)
 
-    matches = tqdm(matches, delay=1.0, maxinterval=1.0)
-    for match in matches:
-        file_path, line_number = match
-        matches.set_description(f"{file_path}:{line_number} ")
-        cursor.execute("SELECT tag FROM log_trace_index WHERE file_path LIKE ? AND line_number = ?",
-                       ('%' + file_path, line_number))
+    #matches = tqdm(matches, delay=1.0, maxinterval=1.0)
+    #query = f"SELECT tag FROM log_trace_index WHERE file_path || ":" || line_number IN ( ? )";
+
+    if matches:
+        query = f"SELECT file_path, line_number, tag FROM log_trace_index WHERE {' OR '.join(['(file_path LIKE ? AND line_number = ?)' for x in matches])}"
+        #params = tuple([file_path, line_number for file_path, line_number in matches])
+        params = tuple(itertools.chain.from_iterable([(f"%{x}", str(y)) for x, y in matches]))
+        print(query)
+        print(params)
+        cursor.execute(query, params)
+        #file_path, line_number = match
+        #matches.set_description(f"{file_path}:{line_number} ")
+        #cursor.execute("SELECT tag FROM log_trace_index WHERE file_path LIKE ? AND line_number = ?",
+                       #('%' + file_path, line_number))
 
         tags = cursor.fetchall()
         for tag in tags:
-            version_counts[tag[0]] += 1
-            version_details[tag[0]].add(f"{file_path}:{line_number}")
+            version_counts[tag[2]] += 1
+            version_details[tag[2]].add(f"{tag[0]}:{tag[1]}")
 
     conn.close()
 
