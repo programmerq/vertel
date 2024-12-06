@@ -29,9 +29,10 @@ def process_log_or_trace(log_trace, db_path):
     #query = f"SELECT tag FROM log_trace_index WHERE file_path || ":" || line_number IN ( ? )";
 
     if matches:
-        query = f"SELECT file_path, line_number, tag FROM log_trace_index WHERE {' OR '.join(['(file_path LIKE ? AND line_number = ?)' for x in matches])}"
+        query = f"SELECT file_path, line_number, tag FROM log_trace_index WHERE {' OR '.join(['(file_path = ? AND line_number = ?)' for x in matches])}"
         #params = tuple([file_path, line_number for file_path, line_number in matches])
-        params = tuple(itertools.chain.from_iterable([(f"%{x}", str(y)) for x, y in matches]))
+        #params = tuple(itertools.chain.from_iterable([(f"%{x}", str(y)) for x, y in matches]))
+        params = tuple(itertools.chain.from_iterable([(f"{x}", str(y)) for x, y in matches]))
         print(query)
         print(params)
         cursor.execute(query, params)
