@@ -1,10 +1,13 @@
-#!/Users/jeff/workspace/vertel/.venv/bin/python
+#!/usr/bin/env python
 import os
 import sqlite3
 import git
 import re
 from time import sleep
 from tqdm import tqdm
+
+from vertel.config import load_config
+
 
 def initialize_database(db_path):
     conn = sqlite3.connect(db_path)
@@ -112,8 +115,10 @@ def index_repository(tag, repo_path, db_path):
     conn.close()
 
 if __name__ == "__main__":
-    db_path = 'log_trace_index.db'
-    repo_path = '/Users/jeff/workspace/teleport/'  # Update as needed
+    config = load_config()
+
+    repo_path = config["repo_path"]
+    db_path = config["db_path"]
 
     initialize_database(db_path)
     print("initialized")

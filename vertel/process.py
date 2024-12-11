@@ -1,4 +1,4 @@
-#!/Users/jeff/workspace/vertel/.venv/bin/python
+#!/usr/bin/env python
 import re
 import sqlite3
 import csv
@@ -7,6 +7,8 @@ from tqdm import tqdm
 from collections import defaultdict
 from natsort import natsorted
 import sys
+
+from vertel.config import load_config
 
 def process_log_or_trace(log_trace, db_path):
     pattern = re.compile(r'\b(\w+/\w+\.go):(\d+)')
@@ -88,6 +90,7 @@ def generate_csv(version_details, output_file):
     print(f"CSV file '{output_file}' generated successfully.")
 
 if __name__ == "__main__":
-    db_path = '/Users/jeff/workspace/vertel/log_trace_index.db'
+    config = load_config()
+    db_path = config["db_path"]
     log_trace_input = sys.stdin.read()
     process_log_or_trace(log_trace_input, db_path)
