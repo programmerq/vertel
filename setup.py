@@ -9,8 +9,8 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'newtags=vertel.newtags:main',
-            'process=vertel.process:main'
+            'vertel-newtags=vertel.newtags:main',
+            'vertel-process=vertel.process:main'
         ]
     },
     include_package_data=True,

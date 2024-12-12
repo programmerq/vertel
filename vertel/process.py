@@ -10,6 +10,7 @@ import sys
 
 from vertel.config import load_config
 
+
 def process_log_or_trace(log_trace, db_path):
     pattern = re.compile(r'\b(\w+/\w+\.go):(\d+)')
     matches = set(pattern.findall(log_trace))
@@ -68,6 +69,7 @@ def process_log_or_trace(log_trace, db_path):
 
     generate_csv(version_details, "./output.csv")
 
+
 def generate_csv(version_details, output_file):
     # Extract all unique file:line patterns
     all_patterns = {pattern for details in version_details.values() for pattern in details}
@@ -89,8 +91,13 @@ def generate_csv(version_details, output_file):
 
     print(f"CSV file '{output_file}' generated successfully.")
 
-if __name__ == "__main__":
+
+def main():
     config = load_config()
     db_path = config["db_path"]
     log_trace_input = sys.stdin.read()
     process_log_or_trace(log_trace_input, db_path)
+
+
+if __name__ == "__main__":
+    main()

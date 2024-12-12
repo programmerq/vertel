@@ -47,6 +47,7 @@ def initialize_database(db_path):
     conn.commit()
     conn.close()
 
+
 def existing_tags(db_path):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -54,6 +55,7 @@ def existing_tags(db_path):
     conn.commit()
     conn.close()
     return tags
+
 
 def get_tag_id(conn, tag, tag_cache):
     """Get or create a tag_id for the given tag."""
@@ -66,6 +68,7 @@ def get_tag_id(conn, tag, tag_cache):
     tag_cache[tag] = tag_id
     return tag_id
 
+
 def get_file_id(conn, file_path, file_cache):
     """Get or create a file_id for the given file_path."""
     if file_path in file_cache:
@@ -77,13 +80,14 @@ def get_file_id(conn, file_path, file_cache):
     file_cache[file_path] = file_id
     return file_id
 
+
 def index_repository(tag, repo_path, db_path):
     repo = git.Repo(repo_path)
     sleep(1)
     repo.git.checkout(tag)
 
     log_trace_patterns = [
-        re.compile(r'\b[a-zA-Z_][a-zA-Z0-9_]*\.\w+\('), # Example pattern as before
+        re.compile(r'\b[a-zA-Z_][a-zA-Z0-9_]*\.\w+\('),  # Example pattern as before
     ]
 
     conn = sqlite3.connect(db_path)
@@ -114,7 +118,8 @@ def index_repository(tag, repo_path, db_path):
     conn.commit()
     conn.close()
 
-if __name__ == "__main__":
+
+def main():
     config = load_config()
 
     repo_path = config["repo_path"]
@@ -139,3 +144,7 @@ if __name__ == "__main__":
     for tag in tags:
         tags.set_description(tag)
         index_repository(tag, repo_path, db_path)
+
+
+if __name__ == "__main__":
+    main()
