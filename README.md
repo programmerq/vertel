@@ -65,4 +65,33 @@ visually identify the candidates (helpful in some cases)
 
 ## Background
 
-This started out with me wondering 
+This started out with me wondering if I could figure out whether the reported version matched the log output. I would navigate to the file and line number in the repo and look at the log message to see if it matched up. With some guess-and-check, I could narrow down what version produced the log. This project was a way to automate this.
+
+## Alternate Approaches
+
+This currently depends on looking at files checked out from git. This means that line numbers that aren't in the git repository (like dependencies) won't be considered. Older versions of Teleport used to check in dependencies into the `vendor/` path, but that no longer happens.
+
+Instead of using git, the line number information can be extracted directly from the binaries.
+
+```
+go tool objdump /path/to/binary | grep '\.go:[0-9]\+.*CALL' | awk '{print $1}' > output.txt
+```
+
+On MacOS, if you have a universal binary, you'll need to extract the specific architecture you want before passing it to `go tool objdump`:
+
+```
+% file /usr/local/bin/teleport
+/usr/local/bin/teleport: Mach-O universal binary with 2 architectures: [x86_64:Mach-O 64-bit executable x86_64] [arm64]
+/usr/local/bin/teleport (for architecture x86_64):	Mach-O 64-bit executable x86_64
+/usr/local/bin/teleport (for architecture arm64):	Mach-O 64-bit executable arm64
+% lipo -thin x86_64 -output teleport-x86_64 /usr/local/bin/teleport
+% lipo -thin arm64 -output teleport-arm64 /usr/local/bin/teleport
+% file teleport-arm64
+teleport-arm64: Mach-O 64-bit executable arm64
+% file teleport-x86_64
+teleport-x86_64: Mach-O 64-bit executable x86_64
+```
+
+The `objdump` raw output takes a few minutes, and outputs 2.3 GB of raw data for one binary. The `grep '\.go:[0-9]\+.*CALL'` returns only lines that are a function call, and have a `.go` filename with line number. For example, `api.go:178021`. The `awk '{print $1}' brings it down to _only_ the filename.go:line (with no other fields). Run that through `sort | uniq`, and the output from the 2.3 GB dump is only 15 MB.
+
+
