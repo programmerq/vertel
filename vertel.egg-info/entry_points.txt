@@ -1,0 +1,3 @@
+[console_scripts]
+vertel-index = vertel.index_binary:main
+vertel-process = vertel.process:main

@@ -1,0 +1,14 @@
+README.md
+setup.py
+vertel/__init__.py
+vertel/binary_analysis.py
+vertel/config.py
+vertel/index_binary.py
+vertel/newtags.py
+vertel/process.py
+vertel.egg-info/PKG-INFO
+vertel.egg-info/SOURCES.txt
+vertel.egg-info/dependency_links.txt
+vertel.egg-info/entry_points.txt
+vertel.egg-info/requires.txt
+vertel.egg-info/top_level.txt
