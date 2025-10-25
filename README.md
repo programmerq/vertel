@@ -158,3 +158,7 @@ This approach works because:
 
 - [AGENTS.md](AGENTS.md) - Information about AI agents working on this project
 - [Go objdump documentation](https://pkg.go.dev/cmd/objdump)
+
+## Migration from Previous Versions
+
+If you were using an older version of Vertel that worked with git repositories, see [MIGRATION.md](MIGRATION.md) for detailed migration instructions.
