@@ -1,9 +1,0 @@
-Metadata-Version: 2.1
-Name: vertel
-Version: 0.1.0
-Summary: CLI tool to analyze Go binary logs to identify the version that produced the logs
-Home-page: https://github.com/your-repo
-Author: Jeff Anderson
-Author-email: jeff@goteleport.com
-Classifier: Programming Language :: Python :: 3
-Classifier: Operating System :: OS Independent

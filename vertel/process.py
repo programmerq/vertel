@@ -12,7 +12,8 @@ from vertel.config import load_config
 
 
 def process_log_or_trace(log_trace, db_path):
-    pattern = re.compile(r'\b(\w+/\w+\.go):(\d+)')
+    # Match patterns like "file.go:123" or "path/to/file.go:123"
+    pattern = re.compile(r'\b([a-zA-Z0-9_/.-]+\.go):(\d+)')
     matches = set(pattern.findall(log_trace))
 
     if not matches:
@@ -91,8 +92,17 @@ def generate_csv(version_details, output_file):
 
 
 def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Process log files to identify binary versions'
+    )
+    parser.add_argument('--db', help='Path to database (overrides config)')
+    
+    args = parser.parse_args()
+    
     config = load_config()
-    db_path = config["db_path"]
+    db_path = args.db or config["db_path"]
     log_trace_input = sys.stdin.read()
     process_log_or_trace(log_trace_input, db_path)
 
