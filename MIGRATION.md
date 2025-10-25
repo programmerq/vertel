@@ -22,12 +22,12 @@ If you were using the previous version of Vertel that analyzed git repository ta
 
 1. **Save your old database** (optional):
    ```bash
-   cp ~/Library/Application\ Support/vertel/log_trace_index.db ~/old_vertel_db_backup.db
+   cp "$HOME/Library/Application Support/vertel/log_trace_index.db" ~/old_vertel_db_backup.db
    ```
 
 2. **Remove old database** (required - schemas are incompatible):
    ```bash
-   rm ~/Library/Application\ Support/vertel/log_trace_index.db
+   rm "$HOME/Library/Application Support/vertel/log_trace_index.db"
    ```
 
 3. **Update Vertel**:
@@ -41,8 +41,8 @@ If you were using the previous version of Vertel that analyzed git repository ta
    - Download pre-built binaries from releases
    - Or build from source for each tag:
      ```bash
-     git checkout v1.2.3
-     go build -o mybinary-v1.2.3
+     git checkout <tag>
+     go build -o mybinary-<tag>
      ```
 
 5. **Index binaries**:
@@ -157,7 +157,7 @@ If you encounter issues during migration:
 ### Database Location
 
 The database location hasn't changed:
-- macOS: `~/Library/Application Support/vertel/log_trace_index.db`
+- macOS: `$HOME/Library/Application Support/vertel/log_trace_index.db`
 - Others: Check `~/.config/vertel/config.json`
 
 However, the schema has changed, so old databases are not compatible with the new version.
