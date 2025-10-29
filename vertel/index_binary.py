@@ -70,11 +70,24 @@ def get_binary_id(conn, binary_name, version, os_name, arch, go_version, binary_
         INSERT OR IGNORE INTO binaries (binary_name, version, os, arch, go_version)
         VALUES (?, ?, ?, ?, ?)
     ''', (binary_name, version, os_name, arch, go_version))
-    cursor.execute('''
-        SELECT binary_id FROM binaries 
-        WHERE binary_name = ? AND version = ? AND os = ? AND arch = ?
-    ''', (binary_name, version, os_name, arch))
-    binary_id = cursor.fetchone()[0]
+    
+    # Handle NULL version comparison properly
+    if version is None:
+        cursor.execute('''
+            SELECT binary_id FROM binaries 
+            WHERE binary_name = ? AND version IS NULL AND os = ? AND arch = ?
+        ''', (binary_name, os_name, arch))
+    else:
+        cursor.execute('''
+            SELECT binary_id FROM binaries 
+            WHERE binary_name = ? AND version = ? AND os = ? AND arch = ?
+        ''', (binary_name, version, os_name, arch))
+    
+    result = cursor.fetchone()
+    if result is None:
+        raise ValueError(f"Failed to create or retrieve binary_id for {binary_name}:{version}:{os_name}:{arch}")
+    
+    binary_id = result[0]
     binary_cache[cache_key] = binary_id
     return binary_id
 
