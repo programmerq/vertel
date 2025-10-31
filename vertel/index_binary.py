@@ -70,18 +70,10 @@ def get_binary_id(conn, binary_name, version, os_name, arch, go_version, binary_
         INSERT OR IGNORE INTO binaries (binary_name, version, os, arch, go_version)
         VALUES (?, ?, ?, ?, ?)
     ''', (binary_name, version, os_name, arch, go_version))
-    
-    # Handle NULL version comparison properly
-    if version is None:
-        cursor.execute('''
-            SELECT binary_id FROM binaries 
-            WHERE binary_name = ? AND version IS NULL AND os = ? AND arch = ?
-        ''', (binary_name, os_name, arch))
-    else:
-        cursor.execute('''
-            SELECT binary_id FROM binaries 
-            WHERE binary_name = ? AND version = ? AND os = ? AND arch = ?
-        ''', (binary_name, version, os_name, arch))
+    cursor.execute('''
+        SELECT binary_id FROM binaries 
+        WHERE binary_name = ? AND version = ? AND os = ? AND arch = ?
+    ''', (binary_name, version, os_name, arch))
     
     result = cursor.fetchone()
     if result is None:
@@ -159,12 +151,13 @@ def index_binary(binary_path, version, db_path):
 def main():
     """Main entry point for the index-binary command."""
     import argparse
+    from vertel.binary_analysis import detect_version_from_binary
     
     parser = argparse.ArgumentParser(
         description='Index a Go binary by extracting file:line debug information'
     )
     parser.add_argument('binary', help='Path to the Go binary to index')
-    parser.add_argument('--version', '-v', help='Version string for this binary (e.g., v1.2.3)')
+    parser.add_argument('--version', '-v', help='Version string for this binary (e.g., v1.2.3). If not provided, will attempt to auto-detect.')
     parser.add_argument('--db', help='Path to database (overrides config)')
     
     args = parser.parse_args()
@@ -181,11 +174,23 @@ def main():
     if not os.access(args.binary, os.X_OK):
         print(f"Warning: Binary is not executable: {args.binary}")
     
+    # Determine version
+    version = args.version
+    if not version:
+        print("No version specified, attempting to auto-detect...")
+        version = detect_version_from_binary(args.binary)
+        if version:
+            print(f"Auto-detected version: {version}")
+        else:
+            print("Error: Could not auto-detect version. Please provide --version explicitly.")
+            print("Tried running binary with: version, --version, -version, -v")
+            sys.exit(1)
+    
     # Initialize database
     initialize_database(db_path)
     
     # Index the binary
-    success = index_binary(args.binary, args.version, db_path)
+    success = index_binary(args.binary, version, db_path)
     
     sys.exit(0 if success else 1)
 

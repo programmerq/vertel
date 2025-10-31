@@ -9,6 +9,52 @@ import tempfile
 from pathlib import Path
 
 
+def detect_version_from_binary(binary_path):
+    """
+    Try to detect version by running the binary with version flags.
+    
+    Returns the detected version string (in semver format like v1.2.3) or None.
+    """
+    # Try different version flags
+    version_flags = ['version', '--version', '-version', '-v']
+    
+    for flag in version_flags:
+        try:
+            # Run with a short timeout to avoid hanging
+            result = subprocess.run([binary_path, flag], 
+                                  capture_output=True, text=True, timeout=5)
+            
+            if result.returncode == 0 and result.stdout:
+                output = result.stdout
+            elif result.stderr:
+                output = result.stderr
+            else:
+                continue
+            
+            # Look for semver pattern (v1.2.3 or 1.2.3)
+            # Handle various formats like "Teleport Enterprise v18.2.7 git:v18.2.7-0-g41c7f18"
+            version_patterns = [
+                r'\bv(\d+\.\d+\.\d+(?:-[\w.]+)?)',  # v1.2.3 or v1.2.3-beta
+                r'\b(\d+\.\d+\.\d+(?:-[\w.]+)?)',   # 1.2.3 or 1.2.3-beta
+            ]
+            
+            for pattern in version_patterns:
+                match = re.search(pattern, output)
+                if match:
+                    version = match.group(0)
+                    # Ensure it starts with 'v'
+                    if not version.startswith('v'):
+                        version = 'v' + version
+                    return version
+        
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, PermissionError):
+            continue
+        except Exception:
+            continue
+    
+    return None
+
+
 def detect_binary_info(binary_path):
     """
     Detect OS, architecture, and Go version from a binary.
@@ -125,15 +171,40 @@ def extract_go_file_line_pairs(binary_path):
             print(f"Error running objdump: {result.stderr}")
             return pairs
         
-        # Pattern to match lines like: "path/to/file.go:123"
-        # We're looking for .go files with line numbers
-        pattern = re.compile(r'\s+([a-zA-Z0-9_/.-]+\.go):(\d+)\s')
+        # Pattern to match TEXT lines which contain full file paths
+        # Format: TEXT symbol(SB) /full/path/to/file.go
+        text_pattern = re.compile(r'^TEXT\s+\S+\s+(.+\.go)$')
+        
+        # Pattern to match code lines with file:line references
+        # Format: "  file.go:123    0x123456    ..."
+        code_pattern = re.compile(r'^\s+([a-zA-Z0-9_.-]+\.go):(\d+)\s')
+        
+        current_file = None
         
         for line in result.stdout.splitlines():
-            match = pattern.search(line)
-            if match:
-                file_path = match.group(1)
-                line_number = int(match.group(2))
+            # Check if this is a TEXT line with full path
+            text_match = text_pattern.match(line)
+            if text_match:
+                full_path = text_match.group(1)
+                # Extract relative path from full path
+                # Try to extract a meaningful relative path
+                current_file = extract_relative_path(full_path)
+                continue
+            
+            # Check if this is a code line with file:line reference
+            code_match = code_pattern.match(line)
+            if code_match and current_file:
+                filename = code_match.group(1)
+                line_number = int(code_match.group(2))
+                
+                # Use the directory from current_file with the filename
+                if '/' in current_file:
+                    # Get directory from current_file
+                    directory = '/'.join(current_file.split('/')[:-1])
+                    file_path = f"{directory}/{filename}"
+                else:
+                    file_path = filename
+                
                 pairs.add((file_path, line_number))
         
         print(f"Extracted {len(pairs)} unique file:line pairs")
@@ -146,6 +217,40 @@ def extract_go_file_line_pairs(binary_path):
         print(f"Error extracting file:line pairs: {e}")
     
     return pairs
+
+
+def extract_relative_path(full_path):
+    """
+    Extract a meaningful relative path from a full file path.
+    
+    Tries to extract paths relative to common Go source roots like:
+    - Project source (after /src/)
+    - Module path (contains go.mod)
+    - Standard library (internal/*, runtime/*, etc.)
+    """
+    # Try to find common path separators
+    parts = full_path.split('/')
+    
+    # Look for /src/ which often indicates the project source root
+    if 'src' in parts:
+        src_idx = len(parts) - 1 - parts[::-1].index('src')
+        relative_parts = parts[src_idx + 1:]
+        if relative_parts:
+            return '/'.join(relative_parts)
+    
+    # Look for vendor directory
+    if 'vendor' in parts:
+        vendor_idx = len(parts) - 1 - parts[::-1].index('vendor')
+        relative_parts = parts[vendor_idx + 1:]
+        if relative_parts:
+            return '/'.join(relative_parts)
+    
+    # For standard library or other cases, try to get at least 2-3 levels
+    if len(parts) >= 2:
+        # Return last 2-3 components of the path
+        return '/'.join(parts[-2:]) if len(parts) >= 2 else full_path
+    
+    return full_path
 
 
 def analyze_binary(binary_path, arch_hint=None):
