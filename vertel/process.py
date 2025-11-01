@@ -12,7 +12,8 @@ from vertel.config import load_config
 
 
 def process_log_or_trace(log_trace, db_path):
-    pattern = re.compile(r'\b(\w+/\w+\.go):(\d+)')
+    # Match patterns like "file.go:123" or "path/to/file.go:123"
+    pattern = re.compile(r'\b([a-zA-Z0-9_/.-]+\.go):(\d+)')
     matches = set(pattern.findall(log_trace))
 
     if not matches:
@@ -24,16 +25,16 @@ def process_log_or_trace(log_trace, db_path):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    version_counts = defaultdict(int)
-    version_details = defaultdict(set)
+    binary_counts = defaultdict(int)
+    binary_details = defaultdict(set)
 
     # Build the query dynamically for multiple conditions:
     # (f.file_path = ? AND l.line_number = ?) OR (f.file_path = ? AND l.line_number = ?) ...
     conditions = ' OR '.join(['(f.file_path = ? AND l.line_number = ?)'] * len(matches))
     query = f"""
-        SELECT f.file_path, l.line_number, t.tag
+        SELECT f.file_path, l.line_number, b.binary_name, b.version, b.os, b.arch, b.go_version
         FROM log_trace_index l
-        JOIN tags t ON l.tag_id = t.tag_id
+        JOIN binaries b ON l.binary_id = b.binary_id
         JOIN files f ON l.file_id = f.file_id
         WHERE {conditions}
     """
@@ -41,33 +42,31 @@ def process_log_or_trace(log_trace, db_path):
     # Flatten parameters from matches (each match is (file_path, line_number))
     params = tuple(itertools.chain.from_iterable((fp, ln) for fp, ln in matches))
 
-    # Debug:
-    # print(query)
-    # print(params)
-
     cursor.execute(query, params)
     rows = cursor.fetchall()
 
-    for file_path, line_number, tag in rows:
-        version_counts[tag] += 1
-        version_details[tag].add(f"{file_path}:{line_number}")
+    for file_path, line_number, binary_name, version, os_name, arch, go_version in rows:
+        # Create a key that includes binary metadata
+        key = f"{binary_name}:{version}:{os_name}:{arch}"
+        binary_counts[key] += 1
+        binary_details[key].add(f"{file_path}:{line_number}")
 
     conn.close()
 
-    if not version_counts:
-        print("No version matches found for the provided patterns.")
+    if not binary_counts:
+        print("No binary matches found for the provided patterns.")
         return
 
-    # Find the max number of matches any version has
-    max_count = max(len(p) for p in version_details.values())
-    # Get versions with the top counts
-    most_likely_versions = natsorted([v for v, p in version_details.items() if len(p) >= max_count])
+    # Find the max number of matches any binary has
+    max_count = max(len(p) for p in binary_details.values())
+    # Get binaries with the top counts
+    most_likely_binaries = natsorted([b for b, p in binary_details.items() if len(p) >= max_count])
 
-    print("Top Version Candidates:")
-    for version in most_likely_versions:
-        print(f"Version: {version}, Matched {len(version_details[version])} Patterns: {version_details[version]}")
+    print("Top Binary Version Candidates:")
+    for binary in most_likely_binaries:
+        print(f"Binary: {binary}, Matched {len(binary_details[binary])} Patterns: {binary_details[binary]}")
 
-    generate_csv(version_details, "./output.csv")
+    generate_csv(binary_details, "./output.csv")
 
 
 def generate_csv(version_details, output_file):
@@ -93,8 +92,17 @@ def generate_csv(version_details, output_file):
 
 
 def main():
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Process log files to identify binary versions'
+    )
+    parser.add_argument('--db', help='Path to database (overrides config)')
+    
+    args = parser.parse_args()
+    
     config = load_config()
-    db_path = config["db_path"]
+    db_path = args.db or config["db_path"]
     log_trace_input = sys.stdin.read()
     process_log_or_trace(log_trace_input, db_path)
 

@@ -1,3 +1,2 @@
-gitpython
 tqdm
 natsort

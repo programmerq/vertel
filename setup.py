@@ -9,12 +9,12 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'vertel-newtags=vertel.newtags:main',
+            'vertel-index=vertel.index_binary:main',
             'vertel-process=vertel.process:main'
         ]
     },
     include_package_data=True,
-    description='CLI tool to analyze Teleport logs to identify the version that producetd the logs',
+    description='CLI tool to analyze Go binary logs to identify the version that produced the logs',
     author='Jeff Anderson',
     author_email='jeff@goteleport.com',
     url='https://github.com/your-repo',  # Replace with your repository URL
